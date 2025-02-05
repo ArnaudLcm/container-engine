@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+
+	"github.com/arnaudlcm/container-engine/common/log"
 )
 
 const (
@@ -57,4 +59,8 @@ func setupNetworking() {
 	exec.Command("ip", "link", "set", "veth1", "netns", "container_net").Run()
 	exec.Command("ip", "addr", "add", "192.168.1.2/24", "dev", "veth0").Run()
 	exec.Command("ip", "link", "set", "veth0", "up").Run()
+}
+
+func main() {
+	log.Info("Starting container engine Deamon")
 }
