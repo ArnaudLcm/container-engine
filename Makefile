@@ -9,7 +9,7 @@ all: build
 install_lint:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.1
 
-lint:
+lint: install_lint
 	golangci-lint --version
 	golangci-lint run --timeout 5m
 
