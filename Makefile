@@ -1,49 +1,29 @@
-.SUFFIXES:
-.PHONY: all clean gdb build_dir test massif
-all: build_dir $(TARGET)
+.PHONY: all test build_deamon build_client build
 
-SHELL=/bin/sh
-CC=gcc
-FLAGS=
-BUILD_DIR=build
-CFLAGS= -fPIC -g -pthread -std=gnu99
-DEBUGFLAGS=-O0 -D _DEBUG -g
-LDFLAGS= -shared
-TEST_LDFLAGS= -L. $(BUILD_DIR)/container.so
-DEP=.dependencies
+OUTPUT_DEAMON=container-deamon
+OUTPUT_CLIENT=container-client
+GO?=go
 
-TARGET=container.so
-SOURCES=$(wildcard src/*.c)
-TEST_SOURCES=$(wildcard test/*.c)
-HEADERS=$(wildcard include/*.h)
-OBJECTS=$(addprefix $(BUILD_DIR)/, $(notdir $(SOURCES:.c=.o)))
-TEST_OBJECTS=$(addprefix $(BUILD_DIR)/, $(notdir $(TEST_SOURCES:.c=.o)))
-DEPFILES=$(addprefix $(DEP)/, $(notdir $(SOURCES:.c=.d)))
+all: build
 
+install_lint:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.1
 
-all: build_dir $(TARGET)
+lint:
+	golangci-lint --version
+	golangci-lint run --timeout 5m
+
 
 clean:
-	rm -f $(OBJECTS) $(TARGET) $(DEPFILES) $(TEST_OBJECTS) $(BUILD_DIR)/test_executable
+	go clean
 
-build_dir:
-	@mkdir -p $(BUILD_DIR)
-	@mkdir -p $(DEP)
+test:
+	go test ./...
 
-test: build_dir $(TEST_OBJECTS)
-	$(CC) $(TEST_OBJECTS) -o $(BUILD_DIR)/test_executable $(TEST_LDFLAGS) $(CFLAGS)
-	./$(BUILD_DIR)/test_executable
+build: build_deamon build_client
 
-$(BUILD_DIR)/%.o: test/%.c
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) -MMD -MP -Iinclude -Itest -c $< -o $@
+build_deamon:
+	go build -o $(OUTPUT_DEAMON) ./deamon.go
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(OBJECTS) -o $(BUILD_DIR)/$@ $(LDFLAGS)
-
-$(BUILD_DIR)/%.o: src/%.c
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) -MMD -MP -Iinclude -c $< -o $@
-
--include $(DEPFILES)
-
-debug: $(TARGET) $(TEST_OBJECTS)
-	@gdb $(BUILD_DIR)/test_executable
+build_client:
+	go build -o $(OUTPUT_CLIENT) ./client.go
