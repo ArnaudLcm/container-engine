@@ -2,16 +2,18 @@ package core
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
+	"sync"
 
+	"github.com/arnaudlcm/container-engine/common/log"
 	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 )
 
 type EngineDeamon struct {
+	mu         sync.Mutex
 	containers map[uuid.UUID]Container
 	pb.DaemonServiceServer
 }
@@ -20,24 +22,37 @@ const maxAttemptUUID int = 50
 
 func NewEngineDeamon() *EngineDeamon {
 
+	engineDeamon := EngineDeamon{
+		containers: make(map[uuid.UUID]Container),
+	}
+
+	go runRPCServer(&engineDeamon)
+
+	return &engineDeamon
+}
+
+func (g *EngineDeamon) LenContaienrs() int {
+	return len(g.containers)
+
+}
+func runRPCServer(g *EngineDeamon) {
 	lis, err := net.Listen("tcp", ":50051")
 
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatal("Failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterDaemonServiceServer(s, &EngineDeamon{})
-	log.Println("Server is running on port 50051...")
+	pb.RegisterDaemonServiceServer(s, g)
+	log.Info("Server is running on port 50051...")
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
-	}
-	return &EngineDeamon{
-		containers: make(map[uuid.UUID]Container),
+		log.Fatal("Failed to serve: %v", err)
 	}
 }
 
 func (d *EngineDeamon) CreateContainer() (Container, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	container := Container{}
 
 	uuid, err := d.getUniqueUUID()
@@ -64,6 +79,10 @@ func (d *EngineDeamon) CreateContainer() (Container, error) {
 
 	container.Process = process
 	container.Status = CONTAINER_RUNNING
+	d.containers[uuid] = container
+
+	log.Debug("Current length %d", len(d.containers))
+
 	if err := process.Start(); err != nil {
 		return container, err
 	}

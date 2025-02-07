@@ -23,11 +23,11 @@ type Container struct {
 	Namespaces map[NamespaceIdentifier]string // List of namespaces attached to the container with their paths
 }
 
-func (s *EngineDeamon) GetContainers(ctx context.Context, req *pb.ContainersRequest) (*pb.ContainersResponse, error) {
+func (d *EngineDeamon) GetContainers(ctx context.Context, req *pb.ContainersRequest) (*pb.ContainersResponse, error) {
 
-	containers := make([]*pb.ContainerInfos, 0, len(s.containers))
+	containers := make([]*pb.ContainerInfos, 0, len(d.containers))
 
-	for _, c := range s.containers {
+	for _, c := range d.containers {
 		containers = append(containers, &pb.ContainerInfos{
 			Id:     c.ID.String(),
 			Status: convertStatusToProto(c.Status),

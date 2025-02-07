@@ -35,7 +35,7 @@ func GetCommand() *cobra.Command {
 			}
 			fmt.Println("CONTAINER \t STATUS")
 			for _, c := range response.Containers {
-				fmt.Println("%s \t %d", c.Id, c.Status)
+				fmt.Printf("%s \t %d \n", c.Id, c.Status)
 
 			}
 

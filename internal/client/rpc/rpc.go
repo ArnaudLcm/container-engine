@@ -30,9 +30,9 @@ func GetGRPCClient(ctx context.Context) (*gRPCClient, error) {
 
 func SetupGrpcClient() (context.Context, error) {
 	// Establish gRPC connection
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create gRPC client: %v", err)
+		return nil, fmt.Errorf("failed to create gRPC client: %v", err)
 	}
 
 	client := pb.NewDaemonServiceClient(conn)
