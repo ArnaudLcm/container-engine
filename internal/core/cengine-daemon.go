@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type EngineDeamon struct {
+type EngineDaemon struct {
 	mu         sync.Mutex
 	containers map[uuid.UUID]Container
 	pb.DaemonServiceServer
@@ -20,22 +20,18 @@ type EngineDeamon struct {
 
 const maxAttemptUUID int = 50
 
-func NewEngineDeamon() *EngineDeamon {
+func NewEngineDaemon() *EngineDaemon {
 
-	engineDeamon := EngineDeamon{
+	engineDaemon := EngineDaemon{
 		containers: make(map[uuid.UUID]Container),
 	}
 
-	go runRPCServer(&engineDeamon)
+	go runRPCServer(&engineDaemon)
 
-	return &engineDeamon
+	return &engineDaemon
 }
 
-func (g *EngineDeamon) LenContaienrs() int {
-	return len(g.containers)
-
-}
-func runRPCServer(g *EngineDeamon) {
+func runRPCServer(g *EngineDaemon) {
 	lis, err := net.Listen("tcp", ":50051")
 
 	if err != nil {
@@ -50,18 +46,18 @@ func runRPCServer(g *EngineDeamon) {
 	}
 }
 
-func (d *EngineDeamon) CreateContainer() (Container, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+func (g *EngineDaemon) CreateContainer() (Container, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	container := Container{}
 
-	uuid, err := d.getUniqueUUID()
+	uuid, err := g.getUniqueUUID()
 	if err != nil {
 		return container, err
 	}
 
 	container.ID = uuid
-	d.containers[uuid] = container
+	g.containers[uuid] = container
 
 	container.Manager, err = NewCGroupManager(container.ID)
 	if err != nil {
@@ -79,9 +75,9 @@ func (d *EngineDeamon) CreateContainer() (Container, error) {
 
 	container.Process = process
 	container.Status = CONTAINER_RUNNING
-	d.containers[uuid] = container
+	g.containers[uuid] = container
 
-	log.Debug("Current length %d", len(d.containers))
+	log.Debug("Current length %d", len(g.containers))
 
 	if err := process.Start(); err != nil {
 		return container, err
@@ -90,10 +86,10 @@ func (d *EngineDeamon) CreateContainer() (Container, error) {
 	return container, nil
 }
 
-func (d *EngineDeamon) getUniqueUUID() (uuid.UUID, error) {
+func (g *EngineDaemon) getUniqueUUID() (uuid.UUID, error) {
 	for i := 0; i < maxAttemptUUID; i++ {
 		newUUID := uuid.New()
-		if _, exists := d.containers[newUUID]; !exists {
+		if _, exists := g.containers[newUUID]; !exists {
 			return newUUID, nil
 		}
 	}

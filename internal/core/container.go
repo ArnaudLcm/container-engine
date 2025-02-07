@@ -23,7 +23,7 @@ type Container struct {
 	Namespaces map[NamespaceIdentifier]string // List of namespaces attached to the container with their paths
 }
 
-func (d *EngineDeamon) GetContainers(ctx context.Context, req *pb.ContainersRequest) (*pb.ContainersResponse, error) {
+func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.ContainersRequest) (*pb.ContainersResponse, error) {
 
 	containers := make([]*pb.ContainerInfos, 0, len(d.containers))
 

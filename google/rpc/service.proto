@@ -4,7 +4,7 @@ package daemon;
 
 option go_package = "service/proto";
 
-service DaemonService {
+service ContainerDaemonService {
   rpc GetContainers (ContainersRequest) returns (ContainersResponse);
 }
 

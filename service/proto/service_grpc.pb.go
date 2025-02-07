@@ -19,101 +19,102 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DaemonService_GetContainers_FullMethodName = "/daemon.DaemonService/GetContainers"
+	ContainerDaemonService_GetContainers_FullMethodName = "/daemon.ContainerDaemonService/GetContainers"
 )
 
-// DaemonServiceClient is the client API for DaemonService service.
+// ContainerDaemonServiceClient is the client API for ContainerDaemonService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type DaemonServiceClient interface {
+type ContainerDaemonServiceClient interface {
 	GetContainers(ctx context.Context, in *ContainersRequest, opts ...grpc.CallOption) (*ContainersResponse, error)
 }
 
-type daemonServiceClient struct {
+type containerDaemonServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewDaemonServiceClient(cc grpc.ClientConnInterface) DaemonServiceClient {
-	return &daemonServiceClient{cc}
+func NewContainerDaemonServiceClient(cc grpc.ClientConnInterface) ContainerDaemonServiceClient {
+	return &containerDaemonServiceClient{cc}
 }
 
-func (c *daemonServiceClient) GetContainers(ctx context.Context, in *ContainersRequest, opts ...grpc.CallOption) (*ContainersResponse, error) {
+func (c *containerDaemonServiceClient) GetContainers(ctx context.Context, in *ContainersRequest, opts ...grpc.CallOption) (*ContainersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ContainersResponse)
-	err := c.cc.Invoke(ctx, DaemonService_GetContainers_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, ContainerDaemonService_GetContainers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// DaemonServiceServer is the server API for DaemonService service.
-// All implementations must embed UnimplementedDaemonServiceServer
+// ContainerDaemonServiceServer is the server API for ContainerDaemonService service.
+// All implementations must embed UnimplementedContainerDaemonServiceServer
 // for forward compatibility.
-type DaemonServiceServer interface {
+type ContainerDaemonServiceServer interface {
 	GetContainers(context.Context, *ContainersRequest) (*ContainersResponse, error)
-	mustEmbedUnimplementedDaemonServiceServer()
+	mustEmbedUnimplementedContainerDaemonServiceServer()
 }
 
-// UnimplementedDaemonServiceServer must be embedded to have
+// UnimplementedContainerDaemonServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedDaemonServiceServer struct{}
+type UnimplementedContainerDaemonServiceServer struct{}
 
-func (UnimplementedDaemonServiceServer) GetContainers(context.Context, *ContainersRequest) (*ContainersResponse, error) {
+func (UnimplementedContainerDaemonServiceServer) GetContainers(context.Context, *ContainersRequest) (*ContainersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContainers not implemented")
 }
-func (UnimplementedDaemonServiceServer) mustEmbedUnimplementedDaemonServiceServer() {}
-func (UnimplementedDaemonServiceServer) testEmbeddedByValue()                       {}
+func (UnimplementedContainerDaemonServiceServer) mustEmbedUnimplementedContainerDaemonServiceServer() {
+}
+func (UnimplementedContainerDaemonServiceServer) testEmbeddedByValue() {}
 
-// UnsafeDaemonServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to DaemonServiceServer will
+// UnsafeContainerDaemonServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ContainerDaemonServiceServer will
 // result in compilation errors.
-type UnsafeDaemonServiceServer interface {
-	mustEmbedUnimplementedDaemonServiceServer()
+type UnsafeContainerDaemonServiceServer interface {
+	mustEmbedUnimplementedContainerDaemonServiceServer()
 }
 
-func RegisterDaemonServiceServer(s grpc.ServiceRegistrar, srv DaemonServiceServer) {
-	// If the following call pancis, it indicates UnimplementedDaemonServiceServer was
+func RegisterContainerDaemonServiceServer(s grpc.ServiceRegistrar, srv ContainerDaemonServiceServer) {
+	// If the following call pancis, it indicates UnimplementedContainerDaemonServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&DaemonService_ServiceDesc, srv)
+	s.RegisterService(&ContainerDaemonService_ServiceDesc, srv)
 }
 
-func _DaemonService_GetContainers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ContainerDaemonService_GetContainers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ContainersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DaemonServiceServer).GetContainers(ctx, in)
+		return srv.(ContainerDaemonServiceServer).GetContainers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DaemonService_GetContainers_FullMethodName,
+		FullMethod: ContainerDaemonService_GetContainers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServiceServer).GetContainers(ctx, req.(*ContainersRequest))
+		return srv.(ContainerDaemonServiceServer).GetContainers(ctx, req.(*ContainersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// DaemonService_ServiceDesc is the grpc.ServiceDesc for DaemonService service.
+// ContainerDaemonService_ServiceDesc is the grpc.ServiceDesc for ContainerDaemonService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var DaemonService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "daemon.DaemonService",
-	HandlerType: (*DaemonServiceServer)(nil),
+var ContainerDaemonService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "daemon.ContainerDaemonService",
+	HandlerType: (*ContainerDaemonServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetContainers",
-			Handler:    _DaemonService_GetContainers_Handler,
+			Handler:    _ContainerDaemonService_GetContainers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
