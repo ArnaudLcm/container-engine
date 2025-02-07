@@ -3,8 +3,6 @@ package core
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"syscall"
 
 	"github.com/google/uuid"
 )
@@ -32,36 +30,24 @@ func (d *EngineDeamon) CreateContainer() (Container, error) {
 	container.ID = uuid
 	d.containers[uuid] = container
 
-	cmd := exec.Command("/bin/bash")
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWUSER | syscall.CLONE_NEWNS,
-		UidMappings: []syscall.SysProcIDMap{
-			{
-				ContainerID: 0,
-				HostID:      os.Getuid(),
-				Size:        1,
-			},
-		},
-		GidMappings: []syscall.SysProcIDMap{
-			{
-				ContainerID: 0,
-				HostID:      os.Getgid(),
-				Size:        1,
-			},
-		},
-	}
-
 	container.Manager, err = NewCGroupManager(container.ID)
 	if err != nil {
 		return container, fmt.Errorf("error during CGroupManager creation: %w", err)
 	}
 
-	if err := cmd.Start(); err != nil {
-		return container, fmt.Errorf("error starting the exec.Command - %w", err)
+	process := Process{
+		Args:              []string{"/bin/bash"},
+		Stdin:             os.Stdin,
+		Stdout:            os.Stdout,
+		CommunicationPipe: nil,
+		UID:               0,
+		GID:               0,
+	}
+
+	container.Process = process
+
+	if err := process.Start(); err != nil {
+		return container, err
 	}
 
 	return container, nil
