@@ -1,0 +1,3 @@
+ENV PATH
+CMD ["/bin/bash"]
+WORKDIR "zeazme"
