@@ -3,6 +3,7 @@ package client
 import (
 	"log"
 
+	"github.com/arnaudlcm/container-engine/internal/client/create"
 	"github.com/arnaudlcm/container-engine/internal/client/list"
 	"github.com/arnaudlcm/container-engine/internal/client/rpc"
 	"github.com/spf13/cobra"
@@ -32,6 +33,7 @@ func init() {
 		rootCmd.SetContext(ctx)
 
 		rootCmd.AddCommand(list.GetCommand())
+		rootCmd.AddCommand(create.GetCommand())
 	}
 
 }
