@@ -1,7 +1,10 @@
-package cmd
+package client
 
 import (
-	"github.com/arnaudlcm/container-engine/internal/cmd/list"
+	"log"
+
+	"github.com/arnaudlcm/container-engine/internal/client/list"
+	"github.com/arnaudlcm/container-engine/internal/client/rpc"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +24,16 @@ func GetRootCommand() *cobra.Command {
 }
 
 func init() {
-	rootCmd.AddCommand(list.GetCommand())
+
+	if ctx, err := rpc.SetupGrpcClient(); err != nil {
+		log.Fatal("%w", err)
+	} else {
+
+		rootCmd.SetContext(ctx)
+
+		rootCmd.AddCommand(list.GetCommand())
+	}
+
 }
 
 func CobraRunE(cmd *cobra.Command, args []string) (err error) {

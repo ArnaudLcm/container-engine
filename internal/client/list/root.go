@@ -1,6 +1,11 @@
 package list
 
 import (
+	"fmt"
+	"log"
+
+	"github.com/arnaudlcm/container-engine/internal/client/rpc"
+	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +23,22 @@ func GetCommand() *cobra.Command {
 			return args, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			grpcClient, err := rpc.GetGRPCClient(cmd.Context())
+			if err != nil {
+				return err
+			}
+
+			response, err := grpcClient.Client.GetContainers(grpcClient.Ctx, &pb.ContainersRequest{})
+			if err != nil {
+				log.Fatalf("Error getting status: %v", err)
+			}
+			fmt.Println("CONTAINER \t STATUS")
+			for _, c := range response.Containers {
+				fmt.Println("%s \t %d", c.Id, c.Status)
+
+			}
+
 			return nil
 		},
 	}
