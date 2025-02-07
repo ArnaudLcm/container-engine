@@ -2,18 +2,36 @@ package core
 
 import (
 	"fmt"
+	"log"
+	"net"
 	"os"
 
+	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
 )
 
 type EngineDeamon struct {
 	containers map[uuid.UUID]Container
+	pb.DaemonServiceServer
 }
 
 const maxAttemptUUID int = 50
 
 func NewEngineDeamon() *EngineDeamon {
+
+	lis, err := net.Listen("tcp", ":50051")
+
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+	pb.RegisterDaemonServiceServer(s, &EngineDeamon{})
+	log.Println("Server is running on port 50051...")
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
+	}
 	return &EngineDeamon{
 		containers: make(map[uuid.UUID]Container),
 	}

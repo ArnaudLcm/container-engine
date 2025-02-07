@@ -15,7 +15,10 @@ func GetCommand() *cobra.Command {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return []string{"oh"}, cobra.ShellCompDirectiveNoFileComp
+			return args, cobra.ShellCompDirectiveNoFileComp
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
 		},
 	}
 

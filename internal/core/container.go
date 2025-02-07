@@ -1,6 +1,11 @@
 package core
 
-import "github.com/google/uuid"
+import (
+	"context"
+
+	pb "github.com/arnaudlcm/container-engine/service/proto"
+	"github.com/google/uuid"
+)
 
 type ContainerStatus string
 
@@ -16,4 +21,18 @@ type Container struct {
 	Process    Process
 	Manager    CGroupManager
 	Namespaces map[NamespaceIdentifier]string // List of namespaces attached to the container with their paths
+}
+
+func (s *EngineDeamon) GetContainers(ctx context.Context, req *pb.ContainersRequest) (*pb.ContainersResponse, error) {
+
+	containers := make([]*pb.ContainerInfos, 0, len(s.containers))
+
+	for _, c := range s.containers {
+		containers = append(containers, &pb.ContainerInfos{
+			Id:     c.ID.String(),
+			Status: convertStatusToProto(c.Status),
+		})
+	}
+
+	return &pb.ContainersResponse{Containers: containers}, nil
 }

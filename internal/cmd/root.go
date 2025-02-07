@@ -1,7 +1,7 @@
-package client
+package cmd
 
 import (
-	"github.com/arnaudlcm/container-engine/internal/client/list"
+	"github.com/arnaudlcm/container-engine/internal/cmd/list"
 	"github.com/spf13/cobra"
 )
 

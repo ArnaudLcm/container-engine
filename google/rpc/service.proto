@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package daemon;
+
+option go_package = "service/proto";
+
+service DaemonService {
+  rpc GetContainers (ContainersRequest) returns (ContainersResponse);
+}
+
+message ContainersRequest {}
+
+enum ContainerStatus {
+  CONTAINER_UNKNOWN = 0;
+  CONTAINER_RUNNING = 1;
+  CONTAINER_KILLED = 2;
+}
+
+message ContainerInfos {
+  string id = 1;
+  ContainerStatus status = 2;
+}
+
+message ContainersResponse {
+  repeated ContainerInfos containers = 1;
+}
