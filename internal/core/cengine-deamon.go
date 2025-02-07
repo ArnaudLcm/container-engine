@@ -45,7 +45,7 @@ func (d *EngineDeamon) CreateContainer() (Container, error) {
 	}
 
 	container.Process = process
-
+	container.Status = CONTAINER_RUNNING
 	if err := process.Start(); err != nil {
 		return container, err
 	}
