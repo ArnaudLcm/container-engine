@@ -15,6 +15,7 @@ type EngineDaemon struct {
 	mu         sync.Mutex
 	containers map[uuid.UUID]Container
 	pb.ContainerDaemonServiceServer
+	fsManager *FSManager
 }
 
 const maxAttemptUUID int = 50
@@ -24,6 +25,7 @@ func NewEngineDaemon() *EngineDaemon {
 
 	engineDaemon := EngineDaemon{
 		containers: make(map[uuid.UUID]Container),
+		fsManager:  NewFSManager(),
 	}
 
 	go runRPCServer(&engineDaemon)

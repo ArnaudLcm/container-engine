@@ -61,6 +61,12 @@ func (g *EngineDaemon) CreateContainer(ctx context.Context, req *pb.CreateContai
 
 	container.Process = process
 	container.Status = pb.ContainerStatus_CONTAINER_HANGING
+
+	// Setup the layer
+	if err := g.fsManager.AddLayer(req.Config.Env, uuid.String()); err != nil {
+		return &pb.CreateContainerResponse{Success: false}, err
+	}
+
 	g.containers[uuid] = container
 	return &pb.CreateContainerResponse{Success: true}, nil
 }

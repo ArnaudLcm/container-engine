@@ -9,8 +9,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"syscall"
+
+	"github.com/arnaudlcm/container-engine/common/log"
 )
 
 const LIB_FS_MERGED_DIR = LIB_FOLDER_PATH + "/containers"
@@ -21,16 +24,20 @@ type FSManager struct {
 }
 
 func NewFSManager() *FSManager {
-	return &FSManager{
+	fsManager := &FSManager{
 		layers: make(map[string]string),
 	}
+
+	fsManager.SetupFSDirs()
+
+	return fsManager
 }
 
 // The purpose of this function is to setup the overlay FS dirs
-func (f *FSManager) SetupFSDirs() error {
-	lowerDir := fmt.Sprintf("%s/layers", LIB_FOLDER_PATH)
-	upperDir := LIB_FS_LAYERS_DIR
-	workDir := fmt.Sprintf("%s/work", LIB_FOLDER_PATH)
+func (f *FSManager) SetupFSDirs() {
+	lowerDir := LIB_FS_LAYERS_DIR
+	upperDir := path.Join(LIB_FOLDER_PATH, "volumes")
+	workDir := path.Join(LIB_FOLDER_PATH, "work")
 	mergedDir := LIB_FS_MERGED_DIR
 	os.MkdirAll(lowerDir, 0755)
 	os.MkdirAll(upperDir, 0755)
@@ -38,12 +45,12 @@ func (f *FSManager) SetupFSDirs() error {
 	os.MkdirAll(mergedDir, 0755)
 
 	// Mount OverlayFS
-	err := syscall.Mount("overlay", mergedDir, "overlay", 0, fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerDir, upperDir, workDir))
+	opts := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerDir, upperDir, workDir)
+	err := syscall.Mount("overlay", mergedDir, "overlay", 0, opts)
 	if err != nil {
-		return err
+		log.Fatal("Failed to mount overlay: %v", err)
 	}
 
-	return nil
 }
 
 func (f *FSManager) AddLayer(layerUrl string, containerUUID string) error {
