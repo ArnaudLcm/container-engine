@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/arnaudlcm/container-engine/common/log"
 	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/google/uuid"
 )
@@ -50,6 +51,12 @@ func (g *EngineDaemon) CreateContainer(ctx context.Context, req *pb.CreateContai
 		return &pb.CreateContainerResponse{Success: false}, fmt.Errorf("error during CGroupManager creation: %w", err)
 	}
 
+	// Setup the layer
+	path, err := g.fsManager.AddLayer(req.Config.Env, uuid.String())
+	if err != nil {
+		return &pb.CreateContainerResponse{Success: false}, err
+	}
+
 	process := Process{
 		Args:              req.Config.Cmd,
 		Stdin:             os.Stdin,
@@ -57,16 +64,18 @@ func (g *EngineDaemon) CreateContainer(ctx context.Context, req *pb.CreateContai
 		CommunicationPipe: nil,
 		UID:               0,
 		GID:               0,
+		rootPath:          path,
+		workingDirectory:  req.Config.Workdir,
 	}
 
 	container.Process = process
 	container.Status = pb.ContainerStatus_CONTAINER_HANGING
 
-	// Setup the layer
-	if err := g.fsManager.AddLayer(req.Config.Env, uuid.String()); err != nil {
-		return &pb.CreateContainerResponse{Success: false}, err
-	}
-
 	g.containers[uuid] = container
+
+	if err := process.Start(); err != nil {
+		log.Error("%w", err)
+		return &pb.CreateContainerResponse{Success: true}, err
+	}
 	return &pb.CreateContainerResponse{Success: true}, nil
 }

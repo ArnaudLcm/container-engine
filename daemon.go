@@ -1,6 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/arnaudlcm/container-engine/common/log"
 	"github.com/arnaudlcm/container-engine/internal/core"
 )
@@ -8,8 +13,12 @@ import (
 func main() {
 	log.Info("Starting container engine Deamon")
 
-	core.NewEngineDaemon()
+	daemon := core.NewEngineDaemon()
 
-	for {
-	}
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	sigReceived := <-sigs
+	fmt.Printf("Received signal: %s\n", sigReceived)
+	daemon.Cleanup()
 }

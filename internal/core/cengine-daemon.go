@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"net"
+	"os"
 	"sync"
 
 	"github.com/arnaudlcm/container-engine/common/log"
@@ -28,6 +29,8 @@ func NewEngineDaemon() *EngineDaemon {
 		fsManager:  NewFSManager(),
 	}
 
+	// Setup working directory
+	os.MkdirAll(LIB_FOLDER_PATH, 0755)
 	go runRPCServer(&engineDaemon)
 
 	return &engineDaemon
@@ -57,4 +60,8 @@ func (g *EngineDaemon) getUniqueUUID() (uuid.UUID, error) {
 	}
 
 	return uuid.UUID{}, fmt.Errorf("can't find a unique UUID")
+}
+
+func (g *EngineDaemon) Cleanup() {
+	g.fsManager.CleanUp()
 }
