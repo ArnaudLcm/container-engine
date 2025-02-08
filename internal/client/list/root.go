@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/arnaudlcm/container-engine/internal/client/rpc"
+	"github.com/arnaudlcm/container-engine/internal/core"
 	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,7 @@ func GetCommand() *cobra.Command {
 			}
 			fmt.Println("CONTAINER \t STATUS")
 			for _, c := range response.Containers {
-				fmt.Printf("%s \t %d \n", c.Id, c.Status)
+				fmt.Printf("%s \t %s \n", c.Id, core.ConvertContainerStatusToString(c.Status))
 
 			}
 

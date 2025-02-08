@@ -9,18 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type ContainerStatus string
-
-const (
-	CONTAINER_RUNNING ContainerStatus = "running"
-	CONTAINER_HANGING ContainerStatus = "hanging"
-	CONTAINER_KILLED  ContainerStatus = "killed"
-)
-
 type Container struct {
 	ID         uuid.UUID
 	RootFs     string // Path to the root fs
-	Status     ContainerStatus
+	Status     pb.ContainerStatus
 	Process    Process
 	Manager    CGroupManager
 	Namespaces map[NamespaceIdentifier]string // List of namespaces attached to the container with their paths
@@ -33,7 +25,7 @@ func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.GetContainersR
 	for _, c := range d.containers {
 		containers = append(containers, &pb.ContainerInfos{
 			Id:     c.ID.String(),
-			Status: convertStatusToProto(c.Status),
+			Status: c.Status,
 		})
 	}
 
@@ -68,7 +60,7 @@ func (g *EngineDaemon) CreateContainer(ctx context.Context, req *pb.CreateContai
 	}
 
 	container.Process = process
-	container.Status = CONTAINER_KILLED
+	container.Status = pb.ContainerStatus_CONTAINER_HANGING
 	g.containers[uuid] = container
 	return &pb.CreateContainerResponse{Success: true}, nil
 }
