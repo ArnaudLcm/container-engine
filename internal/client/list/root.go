@@ -29,7 +29,7 @@ func GetCommand() *cobra.Command {
 				return err
 			}
 
-			response, err := grpcClient.Client.GetContainers(grpcClient.Ctx, &pb.ContainersRequest{})
+			response, err := grpcClient.Client.GetContainers(grpcClient.Ctx, &pb.GetContainersRequest{})
 			if err != nil {
 				log.Fatalf("Error getting status: %v", err)
 			}

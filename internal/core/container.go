@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/google/uuid"
@@ -11,6 +13,7 @@ type ContainerStatus string
 
 const (
 	CONTAINER_RUNNING ContainerStatus = "running"
+	CONTAINER_HANGING ContainerStatus = "hanging"
 	CONTAINER_KILLED  ContainerStatus = "killed"
 )
 
@@ -23,7 +26,7 @@ type Container struct {
 	Namespaces map[NamespaceIdentifier]string // List of namespaces attached to the container with their paths
 }
 
-func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.ContainersRequest) (*pb.ContainersResponse, error) {
+func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.GetContainersRequest) (*pb.GetContainersResponse, error) {
 
 	containers := make([]*pb.ContainerInfos, 0, len(d.containers))
 
@@ -34,5 +37,38 @@ func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.ContainersRequ
 		})
 	}
 
-	return &pb.ContainersResponse{Containers: containers}, nil
+	return &pb.GetContainersResponse{Containers: containers}, nil
+}
+
+func (g *EngineDaemon) CreateContainer(ctx context.Context, req *pb.CreateContainerRequest) (*pb.CreateContainerResponse, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	container := Container{}
+
+	uuid, err := g.getUniqueUUID()
+	if err != nil {
+		return &pb.CreateContainerResponse{Success: false}, err
+	}
+
+	container.ID = uuid
+	g.containers[uuid] = container
+
+	container.Manager, err = NewCGroupManager(container.ID)
+	if err != nil {
+		return &pb.CreateContainerResponse{Success: false}, fmt.Errorf("error during CGroupManager creation: %w", err)
+	}
+
+	process := Process{
+		Args:              req.Config.Cmd,
+		Stdin:             os.Stdin,
+		Stdout:            os.Stdout,
+		CommunicationPipe: nil,
+		UID:               0,
+		GID:               0,
+	}
+
+	container.Process = process
+	container.Status = CONTAINER_KILLED
+	g.containers[uuid] = container
+	return &pb.CreateContainerResponse{Success: true}, nil
 }

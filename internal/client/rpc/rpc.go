@@ -11,7 +11,7 @@ import (
 )
 
 type gRPCClient struct {
-	Client pb.DaemonServiceClient
+	Client pb.ContainerDaemonServiceClient
 	Ctx    context.Context
 	Cancel context.CancelFunc
 }
@@ -35,7 +35,7 @@ func SetupGrpcClient() (context.Context, error) {
 		return nil, fmt.Errorf("failed to create gRPC client: %v", err)
 	}
 
-	client := pb.NewDaemonServiceClient(conn)
+	client := pb.NewContainerDaemonServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 

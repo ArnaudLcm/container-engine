@@ -5,10 +5,28 @@ package daemon;
 option go_package = "service/proto";
 
 service ContainerDaemonService {
-  rpc GetContainers (ContainersRequest) returns (ContainersResponse);
+  rpc GetContainers (GetContainersRequest) returns (GetContainersResponse);
+  rpc CreateContainer (CreateContainerRequest) returns (CreateContainerResponse);
 }
 
-message ContainersRequest {}
+message GetContainersRequest {}
+
+
+message ContainerConfig {
+  string env = 1;
+  repeated string cmd = 2;
+  string workdir = 3;
+}
+
+message CreateContainerRequest {
+  ContainerConfig config = 1;
+}
+
+
+message CreateContainerResponse {
+  bool success = 1;
+}
+
 
 enum ContainerStatus {
   CONTAINER_UNKNOWN = 0;
@@ -21,6 +39,6 @@ message ContainerInfos {
   ContainerStatus status = 2;
 }
 
-message ContainersResponse {
+message GetContainersResponse {
   repeated ContainerInfos containers = 1;
 }

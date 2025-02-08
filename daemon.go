@@ -8,8 +8,8 @@ import (
 func main() {
 	log.Info("Starting container engine Deamon")
 
-	engine := core.NewEngineDaemon()
-	if _, err := engine.CreateContainer(); err != nil {
-		log.Error("%w", err)
+	core.NewEngineDaemon()
+
+	for {
 	}
 }

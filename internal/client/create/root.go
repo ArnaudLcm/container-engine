@@ -3,7 +3,10 @@ package create
 import (
 	"fmt"
 
+	"github.com/arnaudlcm/container-engine/common/log"
+	"github.com/arnaudlcm/container-engine/internal/client/rpc"
 	"github.com/arnaudlcm/container-engine/internal/parser"
+	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -32,12 +35,30 @@ func GetCommand() *cobra.Command {
 				return fmt.Errorf("error reading the container file: %v", err)
 			}
 
-			fmt.Printf("Parsed Instructions:\n")
-			fmt.Printf("ENV: %s\n", parsedInstructions.Env)
-			fmt.Printf("CMD: %v\n", parsedInstructions.Cmd)
-			fmt.Printf("WORKDIR: %s\n", parsedInstructions.WorkDir)
+			grpcClient, err := rpc.GetGRPCClient(cmd.Context())
+			if err != nil {
+				return err
+			}
 
+			request := &pb.CreateContainerRequest{
+				Config: &pb.ContainerConfig{
+					Cmd:     parsedInstructions.Cmd,
+					Workdir: parsedInstructions.WorkDir,
+					Env:     parsedInstructions.Env,
+				},
+			}
+
+			response, err := grpcClient.Client.CreateContainer(grpcClient.Ctx, request)
+			if err != nil {
+				return err
+			}
+
+			if !response.Success {
+				return fmt.Errorf("an unexpected error occured while creating the container")
+			}
+			log.Info("Container successfuly created.")
 			return nil
+
 		},
 	}
 
