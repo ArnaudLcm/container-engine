@@ -18,6 +18,7 @@ type EngineDaemon struct {
 }
 
 const maxAttemptUUID int = 50
+const LIB_FOLDER_PATH = "/var/lib/cengine"
 
 func NewEngineDaemon() *EngineDaemon {
 

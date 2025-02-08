@@ -22,6 +22,8 @@ The goal of this project is to implement a fairly simple container engine.
 
 ### Dependencies
 - Make
+- Ensure you have the overlay mod: `lsmod | grep overlay`
+
 
 ### Build the library
 
@@ -35,3 +37,4 @@ make
 List of resources to have a good understanding of concepts such as cgroups, namespaces and so on:
 - https://www.nccgroup.com/media/eoxggcfy/_ncc_group_understanding_hardening_linux_containers-1-1.pdf
 - http://www.haifux.org/lectures/299/netLec7.pdf
+- https://docs.kernel.org/filesystems/overlayfs.html
