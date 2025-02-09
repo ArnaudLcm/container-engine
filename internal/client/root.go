@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/arnaudlcm/container-engine/internal/client/create"
+	"github.com/arnaudlcm/container-engine/internal/client/image"
 	"github.com/arnaudlcm/container-engine/internal/client/list"
 	"github.com/arnaudlcm/container-engine/internal/client/rpc"
 	"github.com/spf13/cobra"
@@ -34,6 +35,7 @@ func init() {
 
 		rootCmd.AddCommand(list.GetCommand())
 		rootCmd.AddCommand(create.GetCommand())
+		rootCmd.AddCommand(image.GetCommand())
 	}
 
 }

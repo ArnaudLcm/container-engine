@@ -1,4 +1,4 @@
-.PHONY: all test build_deamon build_client build protoc protoc_install
+.PHONY: all test build_deamon build_client build protoc protoc_install keys
 
 OUTPUT_DEAMON=container-deamon
 OUTPUT_CLIENT=container-client
@@ -35,3 +35,8 @@ build_deamon: protoc
 
 build_client: protoc
 	$(GO) build -o $(OUTPUT_CLIENT) ./client.go
+
+keys:
+	@mkdir -p .keys
+	@openssl ecparam -name prime256v1 -genkey -noout -out .keys/private_key.pem
+	@openssl ec -in .keys/private_key.pem -pubout -out .keys/public_key.pem
