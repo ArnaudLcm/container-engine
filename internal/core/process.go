@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/moby/sys/reexec"
 )
 
 type Process struct {
@@ -20,49 +22,99 @@ type Process struct {
 	workingDirectory  string
 }
 
-func (p *Process) PivotRoot() error {
+func init() {
+	reexec.Register("pivot_root", pivotRootReexec)
 
-	putold := filepath.Join(p.rootPath, "/.pivot_root")
+	if reexec.Init() {
+		os.Exit(0)
+	}
+}
 
-	err := os.MkdirAll(putold, 0700)
-	if err != nil {
-		return err
+func pivotRootReexec() {
+	rootPath := os.Getenv("NEW_ROOT")
+
+	if rootPath == "" {
+		fmt.Fprintf(os.Stderr, "missing required environment variables\n")
+		os.Exit(1)
 	}
 
-	err = syscall.Mount(p.rootPath, p.rootPath, "", syscall.MS_BIND|syscall.MS_REC, "")
-	if err != nil {
-		return err
+	putold := filepath.Join(rootPath, "/.pivot_root")
+
+	if err := os.MkdirAll(putold, 0700); err != nil {
+		fmt.Fprintf(os.Stderr, "error creating pivot_root dir: %v\n", err)
+		os.Exit(1)
 	}
 
-	err = syscall.PivotRoot(p.rootPath, putold)
-	if err != nil {
-		return fmt.Errorf("error occured while pivoting root: %w", err)
+	if err := syscall.Mount(rootPath, rootPath, "", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
+		fmt.Fprintf(os.Stderr, "error binding root path: %v\n", err)
+		os.Exit(1)
 	}
 
-	err = os.Chdir(filepath.Join("/", p.workingDirectory))
-	if err != nil {
-		return fmt.Errorf("error occured during chdir to working dir: %w", err)
+	if err := syscall.PivotRoot(rootPath, putold); err != nil {
+		fmt.Fprintf(os.Stderr, "error pivoting root: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := os.Chdir("/"); err != nil {
+		fmt.Fprintf(os.Stderr, "error changing directory: %v\n", err)
+		os.Exit(1)
 	}
 
 	putold = "/.pivot_root"
-	err = syscall.Unmount(putold, syscall.MNT_DETACH)
-	if err != nil {
-		return fmt.Errorf("error occured during unmounting of pivot root: %w", err)
+	if err := syscall.Unmount(putold, syscall.MNT_DETACH); err != nil {
+		fmt.Fprintf(os.Stderr, "error unmounting pivot root: %v\n", err)
+		os.Exit(1)
 	}
 
-	err = os.RemoveAll(putold)
-	if err != nil {
-		return err
+	if err := os.RemoveAll(putold); err != nil {
+		fmt.Fprintf(os.Stderr, "error removing pivot_root directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	runSubCommand()
+
+}
+
+func runSubCommand() error {
+	execCmdStr := os.Getenv("EXEC_CMD")
+	if execCmdStr == "" {
+		fmt.Fprintf(os.Stderr, "error: EXEC_CMD not set\n")
+		os.Exit(1)
+	}
+	execArgsStr := os.Getenv("EXEC_ARGS")
+	execArgs := []string{}
+	if execArgsStr != "" {
+		execArgs = strings.Split(execArgsStr, " ")
+	}
+	execCmd := exec.Command(execCmdStr, execArgs...)
+
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stdout
+
+	if err := execCmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "error starting exec command: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := execCmd.Wait(); err != nil {
+		fmt.Fprintf(os.Stderr, "error waiting for exec command: %v\n", err)
+		os.Exit(1)
 	}
 	return nil
 }
 
 func (p *Process) Start() error {
-	cmd := exec.Command(strings.Join(p.Args, " "))
+	cmd := reexec.Command("pivot_root")
+	cmd.Env = append(os.Environ(),
+		"NEW_ROOT="+p.rootPath,
+		"WORKING_DIR="+p.workingDirectory,
+		"EXEC_CMD="+p.Args[0],
+		"EXEC_ARGS="+strings.Join(p.Args[1:], " "),
+	)
 	cmd.Stdin = p.Stdin
 	cmd.Stdout = p.Stdout
 	cmd.Stderr = p.Stdout
-
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWNS | syscall.CLONE_NEWUTS |
 			syscall.CLONE_NEWIPC | syscall.CLONE_NEWPID |
@@ -83,17 +135,8 @@ func (p *Process) Start() error {
 		},
 	}
 
-	if err := p.PivotRoot(); err != nil {
-		return err
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error starting reexec pivot_root: %w", err)
 	}
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("error starting the exec.Command - %w", err)
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("error starting the exec.Command - %w", err)
-	}
-
 	return nil
 }
