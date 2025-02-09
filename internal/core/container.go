@@ -31,28 +31,62 @@ func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.GetContainersR
 	return &pb.GetContainersResponse{Containers: containers}, nil
 }
 
-func (g *EngineDaemon) CreateContainer(ctx context.Context, req *pb.CreateContainerRequest) (*pb.CreateContainerResponse, error) {
+func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb.ContainerDaemonService_CreateContainerServer) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+
 	container := Container{}
+
+	// Send a message about the creation process starting
+	if err := stream.Send(&pb.CreateContainerResponse{
+		Success: false,
+		Message: "Starting container creation",
+	}); err != nil {
+		return fmt.Errorf("error sending progress: %w", err)
+	}
 
 	uuid, err := g.getUniqueUUID()
 	if err != nil {
-		return &pb.CreateContainerResponse{Success: false}, err
+		if err := stream.Send(&pb.CreateContainerResponse{
+			Success: false,
+			Message: "Failed to generate UUID",
+		}); err != nil {
+			return fmt.Errorf("error sending progress: %w", err)
+		}
+		return err
 	}
 
 	container.ID = uuid
 	g.containers[uuid] = container
 
+	// Notify the client about CGroupManager creation
 	container.Manager, err = NewCGroupManager(container.ID)
 	if err != nil {
-		return &pb.CreateContainerResponse{Success: false}, fmt.Errorf("error during CGroupManager creation: %w", err)
+		if err := stream.Send(&pb.CreateContainerResponse{
+			Success: false,
+			Message: "Error during CGroupManager creation",
+		}); err != nil {
+			return fmt.Errorf("error sending progress: %w", err)
+		}
+		return fmt.Errorf("error during CGroupManager creation: %w", err)
 	}
 
-	// Setup the layer
+	if err := stream.Send(&pb.CreateContainerResponse{
+		Success: false,
+		Message: "Setting up the layer",
+	}); err != nil {
+		return fmt.Errorf("error sending progress: %w", err)
+	}
+
 	path, err := g.fsManager.AddLayer(req.Config.Env, uuid.String())
 	if err != nil {
-		return &pb.CreateContainerResponse{Success: false}, err
+		if err := stream.Send(&pb.CreateContainerResponse{
+			Success: false,
+			Message: "Error during layer setup",
+		}); err != nil {
+			return fmt.Errorf("error sending progress: %w", err)
+		}
+		return err
 	}
 
 	process := Process{
@@ -68,8 +102,24 @@ func (g *EngineDaemon) CreateContainer(ctx context.Context, req *pb.CreateContai
 
 	container.Process = process
 	container.Status = pb.ContainerStatus_CONTAINER_HANGING
-
 	g.containers[uuid] = container
+
+	if err := stream.Send(&pb.CreateContainerResponse{
+		Success: true,
+		Message: "Container process started",
+	}); err != nil {
+		return fmt.Errorf("error sending progress: %w", err)
+	}
+
 	go process.Start()
-	return &pb.CreateContainerResponse{Success: true}, nil
+
+	// Send final success message
+	if err := stream.Send(&pb.CreateContainerResponse{
+		Success: true,
+		Message: "Container created successfully",
+	}); err != nil {
+		return fmt.Errorf("error sending progress: %w", err)
+	}
+
+	return nil
 }

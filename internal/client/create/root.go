@@ -2,6 +2,7 @@ package create
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/arnaudlcm/container-engine/common/log"
 	"github.com/arnaudlcm/container-engine/internal/client/rpc"
@@ -48,15 +49,23 @@ func GetCommand() *cobra.Command {
 				},
 			}
 
-			response, err := grpcClient.Client.CreateContainer(grpcClient.Ctx, request)
+			stream, err := grpcClient.Client.CreateContainer(grpcClient.Ctx, request)
 			if err != nil {
 				return err
 			}
 
-			if !response.Success {
-				return fmt.Errorf("an unexpected error occured while creating the container")
+			for {
+				resp, err := stream.Recv()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					log.Fatal("Error receiving progress: %v", err)
+				}
+
+				fmt.Printf("Progress: %s\n", resp.GetMessage())
 			}
-			log.Info("Container successfuly created.")
+
 			return nil
 
 		},

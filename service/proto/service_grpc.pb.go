@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContainerDaemonServiceClient interface {
 	GetContainers(ctx context.Context, in *GetContainersRequest, opts ...grpc.CallOption) (*GetContainersResponse, error)
-	CreateContainer(ctx context.Context, in *CreateContainerRequest, opts ...grpc.CallOption) (*CreateContainerResponse, error)
+	CreateContainer(ctx context.Context, in *CreateContainerRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[CreateContainerResponse], error)
 }
 
 type containerDaemonServiceClient struct {
@@ -49,22 +49,31 @@ func (c *containerDaemonServiceClient) GetContainers(ctx context.Context, in *Ge
 	return out, nil
 }
 
-func (c *containerDaemonServiceClient) CreateContainer(ctx context.Context, in *CreateContainerRequest, opts ...grpc.CallOption) (*CreateContainerResponse, error) {
+func (c *containerDaemonServiceClient) CreateContainer(ctx context.Context, in *CreateContainerRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[CreateContainerResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateContainerResponse)
-	err := c.cc.Invoke(ctx, ContainerDaemonService_CreateContainer_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ContainerDaemonService_ServiceDesc.Streams[0], ContainerDaemonService_CreateContainer_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[CreateContainerRequest, CreateContainerResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ContainerDaemonService_CreateContainerClient = grpc.ServerStreamingClient[CreateContainerResponse]
 
 // ContainerDaemonServiceServer is the server API for ContainerDaemonService service.
 // All implementations must embed UnimplementedContainerDaemonServiceServer
 // for forward compatibility.
 type ContainerDaemonServiceServer interface {
 	GetContainers(context.Context, *GetContainersRequest) (*GetContainersResponse, error)
-	CreateContainer(context.Context, *CreateContainerRequest) (*CreateContainerResponse, error)
+	CreateContainer(*CreateContainerRequest, grpc.ServerStreamingServer[CreateContainerResponse]) error
 	mustEmbedUnimplementedContainerDaemonServiceServer()
 }
 
@@ -78,8 +87,8 @@ type UnimplementedContainerDaemonServiceServer struct{}
 func (UnimplementedContainerDaemonServiceServer) GetContainers(context.Context, *GetContainersRequest) (*GetContainersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContainers not implemented")
 }
-func (UnimplementedContainerDaemonServiceServer) CreateContainer(context.Context, *CreateContainerRequest) (*CreateContainerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateContainer not implemented")
+func (UnimplementedContainerDaemonServiceServer) CreateContainer(*CreateContainerRequest, grpc.ServerStreamingServer[CreateContainerResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method CreateContainer not implemented")
 }
 func (UnimplementedContainerDaemonServiceServer) mustEmbedUnimplementedContainerDaemonServiceServer() {
 }
@@ -121,23 +130,16 @@ func _ContainerDaemonService_GetContainers_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ContainerDaemonService_CreateContainer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateContainerRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _ContainerDaemonService_CreateContainer_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(CreateContainerRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(ContainerDaemonServiceServer).CreateContainer(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContainerDaemonService_CreateContainer_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContainerDaemonServiceServer).CreateContainer(ctx, req.(*CreateContainerRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(ContainerDaemonServiceServer).CreateContainer(m, &grpc.GenericServerStream[CreateContainerRequest, CreateContainerResponse]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ContainerDaemonService_CreateContainerServer = grpc.ServerStreamingServer[CreateContainerResponse]
 
 // ContainerDaemonService_ServiceDesc is the grpc.ServiceDesc for ContainerDaemonService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -150,11 +152,13 @@ var ContainerDaemonService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetContainers",
 			Handler:    _ContainerDaemonService_GetContainers_Handler,
 		},
+	},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "CreateContainer",
-			Handler:    _ContainerDaemonService_CreateContainer_Handler,
+			StreamName:    "CreateContainer",
+			Handler:       _ContainerDaemonService_CreateContainer_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "google/rpc/service.proto",
 }
