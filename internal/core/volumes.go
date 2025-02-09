@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/arnaudlcm/container-engine/common/log"
@@ -49,7 +50,28 @@ func (f *FSManager) SetupFSDirs() {
 	opts := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerDir, upperDir, workDir)
 	err := syscall.Mount("overlay", mergedDir, "overlay", 0, opts)
 	if err != nil {
-		log.Fatal("Failed to mount overlay: %v", err)
+		log.Fatal("Failed to mount overlay: %w", err)
+	}
+
+	err = filepath.Walk(mergedDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() && path != mergedDir { // Ignore the root directory
+			pathParts := strings.Split(path, "/")
+
+			checksum := pathParts[len(pathParts)-1]
+
+			if checksum != "" {
+				f.layers[checksum] = path
+			}
+
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Fatal("An error occured while retrieve previous overlays: %w", err)
 	}
 
 }

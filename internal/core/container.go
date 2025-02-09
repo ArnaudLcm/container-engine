@@ -10,12 +10,11 @@ import (
 )
 
 type Container struct {
-	ID         uuid.UUID
-	RootFs     string // Path to the root fs
-	Status     pb.ContainerStatus
-	Process    Process
-	Manager    CGroupManager
-	Namespaces map[NamespaceIdentifier]string // List of namespaces attached to the container with their paths
+	ID      uuid.UUID
+	RootFs  string // Path to the root fs
+	Status  pb.ContainerStatus
+	Process Process
+	Manager CGroupManager
 }
 
 func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.GetContainersRequest) (*pb.GetContainersResponse, error) {
