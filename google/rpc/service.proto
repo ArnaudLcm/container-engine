@@ -13,7 +13,7 @@ message GetContainersRequest {}
 
 
 message ContainerConfig {
-  string env = 1;
+  string layer = 1;
   repeated string cmd = 2;
   string workdir = 3;
 }

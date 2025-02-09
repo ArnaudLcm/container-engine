@@ -7,7 +7,7 @@ import (
 )
 
 type ContainerConfig struct {
-	Env     string
+	Layer   string
 	Cmd     []string
 	WorkDir string
 }
@@ -26,8 +26,8 @@ func ParseContainerConfig(filename string) (ContainerConfig, error) {
 		instruction := strings.TrimSpace(scanner.Text())
 
 		switch {
-		case strings.HasPrefix(instruction, "ENV"):
-			result.Env = strings.TrimSpace(strings.TrimPrefix(instruction, "ENV"))
+		case strings.HasPrefix(instruction, "LAYER"):
+			result.Layer = strings.TrimSpace(strings.TrimPrefix(instruction, "LAYER"))
 		case strings.HasPrefix(instruction, "CMD"):
 			cmdContent := strings.TrimSpace(strings.TrimPrefix(instruction, "CMD"))
 			cmdContent = strings.Trim(cmdContent, "[]\"")

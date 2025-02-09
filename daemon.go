@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,7 +14,21 @@ import (
 func main() {
 	log.Info("Starting container engine Deamon")
 
-	daemon := core.NewEngineDaemon()
+	keyPath := flag.String("key", "", "Path to the ECC public key")
+
+	flag.Parse()
+
+	if *keyPath == "" {
+		fmt.Println("Usage: go run daemon.go -key=PathToTheKey")
+		return
+	}
+
+	key, err := core.LoadECCPublicKey(*keyPath)
+	if err != nil {
+		log.Fatal("%w", err)
+	}
+
+	daemon := core.NewEngineDaemon(key)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

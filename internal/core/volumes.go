@@ -3,11 +3,13 @@ package core
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -15,6 +17,7 @@ import (
 	"syscall"
 
 	"github.com/arnaudlcm/container-engine/common/log"
+	"github.com/arnaudlcm/container-engine/internal/parser"
 	"github.com/ulikunitz/xz"
 )
 
@@ -76,21 +79,39 @@ func (f *FSManager) SetupFSDirs() {
 
 }
 
-func (f *FSManager) AddLayer(layerUrl string, containerUUID string) (string, error) {
+func (f *FSManager) AddLayer(manifest *parser.ImageManifest, publicKey *ecdsa.PublicKey, containerUUID string) (string, error) {
+
 	tmpDir, err := os.MkdirTemp("", "tmp_layer_cengine")
 	if err != nil {
 		return "", fmt.Errorf("error creating temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	resp, err := http.Get(layerUrl)
-	if err != nil {
-		return "", fmt.Errorf("failed to download tarball: %w", err)
-	}
-	defer resp.Body.Close()
+	var reader io.ReadCloser
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("bad response status: %d", resp.StatusCode)
+	// Check if layerUrl is a URL or a local file path
+	if parsedURL, err := url.ParseRequestURI(manifest.Tar); err == nil && (parsedURL.Scheme == "http" || parsedURL.Scheme == "https") {
+		// HTTP(S) URL: Download the tarball
+		resp, err := http.Get(manifest.Tar)
+		if err != nil {
+			return "", fmt.Errorf("failed to download tarball: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("bad response status: %d", resp.StatusCode)
+		}
+
+		reader = resp.Body
+	} else {
+		// Local file path: Open the file
+		file, err := os.Open(manifest.Tar)
+		if err != nil {
+			return "", fmt.Errorf("failed to open local file: %w", err)
+		}
+		defer file.Close()
+
+		reader = file
 	}
 
 	tarballPath := filepath.Join(tmpDir, containerUUID)
@@ -106,14 +127,18 @@ func (f *FSManager) AddLayer(layerUrl string, containerUUID string) (string, err
 	hasher := sha256.New()
 	multiWriter := io.MultiWriter(outFile, hasher)
 
-	_, err = io.Copy(multiWriter, resp.Body)
+	_, err = io.Copy(multiWriter, reader)
 	if err != nil {
 		return "", fmt.Errorf("failed to save tarball: %w", err)
 	}
 
 	checksum := hex.EncodeToString(hasher.Sum(nil))
-
 	layerPath := filepath.Join(LIB_FS_LAYERS_DIR, checksum)
+
+	// Verify the manifest signature
+	if ok := VerifySignature(publicKey, checksum, manifest.Signature); !ok {
+		return "", fmt.Errorf("signature of the tarball was not verified")
+	}
 
 	if _, ok := f.layers[checksum]; !ok {
 		if err := extractTarball(tarballPath, layerPath); err != nil {

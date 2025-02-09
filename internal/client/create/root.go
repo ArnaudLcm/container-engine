@@ -45,7 +45,7 @@ func GetCommand() *cobra.Command {
 				Config: &pb.ContainerConfig{
 					Cmd:     parsedInstructions.Cmd,
 					Workdir: parsedInstructions.WorkDir,
-					Env:     parsedInstructions.Env,
+					Layer:   parsedInstructions.Layer,
 				},
 			}
 

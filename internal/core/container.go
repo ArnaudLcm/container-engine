@@ -3,8 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 
+	"github.com/arnaudlcm/container-engine/internal/parser"
 	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/google/uuid"
 )
@@ -57,7 +61,6 @@ func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb
 	}
 
 	container.ID = uuid
-	g.containers[uuid] = container
 
 	// Notify the client about CGroupManager creation
 	container.Manager, err = NewCGroupManager(container.ID)
@@ -78,7 +81,45 @@ func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb
 		return fmt.Errorf("error sending progress: %w", err)
 	}
 
-	path, err := g.fsManager.AddLayer(req.Config.Env, uuid.String())
+	// First retrieve the manifest
+	var reader io.ReadCloser
+	// Check if layerUrl is a URL or a local file path
+	if parsedURL, err := url.ParseRequestURI(req.Config.Layer); err == nil && (parsedURL.Scheme == "http" || parsedURL.Scheme == "https") {
+		// HTTP(S) URL: Download the tarball
+		resp, err := http.Get(req.Config.Layer)
+		if err != nil {
+			return fmt.Errorf("failed to download layer manifest: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("bad response status: %d", resp.StatusCode)
+		}
+
+		reader = resp.Body
+	} else {
+		// Local file path: Open the file
+		file, err := os.Open(req.Config.Layer)
+		if err != nil {
+			return fmt.Errorf("failed to open local file: %w", err)
+		}
+		defer file.Close()
+
+		reader = file
+	}
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+
+	manifest, err := parser.ParseImageManifest(data)
+
+	if err != nil {
+		return err
+	}
+
+	path, err := g.fsManager.AddLayer(manifest, g.manifestKey, uuid.String())
 	if err != nil {
 		if err := stream.Send(&pb.CreateContainerResponse{
 			Success: false,

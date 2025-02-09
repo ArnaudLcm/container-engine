@@ -1,6 +1,7 @@
 package core
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"net"
 	"os"
@@ -16,17 +17,19 @@ type EngineDaemon struct {
 	mu         sync.Mutex
 	containers map[uuid.UUID]Container
 	pb.ContainerDaemonServiceServer
-	fsManager *FSManager
+	fsManager   *FSManager
+	manifestKey *ecdsa.PublicKey
 }
 
 const maxAttemptUUID int = 50
 const LIB_FOLDER_PATH = "/var/lib/cengine"
 
-func NewEngineDaemon() *EngineDaemon {
+func NewEngineDaemon(key *ecdsa.PublicKey) *EngineDaemon {
 
 	engineDaemon := EngineDaemon{
-		containers: make(map[uuid.UUID]Container),
-		fsManager:  NewFSManager(),
+		containers:  make(map[uuid.UUID]Container),
+		fsManager:   NewFSManager(),
+		manifestKey: key,
 	}
 
 	// Setup working directory
