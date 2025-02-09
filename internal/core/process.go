@@ -60,6 +60,11 @@ func pivotRootReexec() {
 		os.Exit(1)
 	}
 
+	if err := syscall.Mount("proc", "/proc", "proc", 0, ""); err != nil {
+		fmt.Println("failed to mount /proc: ", err)
+		os.Exit(1)
+	}
+
 	putold = "/.pivot_root"
 	if err := syscall.Unmount(putold, syscall.MNT_DETACH); err != nil {
 		fmt.Fprintf(os.Stderr, "error unmounting pivot root: %v\n", err)

@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/arnaudlcm/container-engine/common/log"
+	"github.com/ulikunitz/xz"
 )
 
 const LIB_FS_MERGED_DIR = LIB_FOLDER_PATH + "/containers"
@@ -109,14 +110,39 @@ func extractTarball(tarballPath, destDir string) error {
 	}
 	defer file.Close()
 
-	gzReader, err := gzip.NewReader(file)
-	if err != nil {
-		return fmt.Errorf("failed to create gzip reader: %w", err)
+	// Read the first few bytes to determine the file type
+	buf := make([]byte, 512)
+	if _, err := file.Read(buf); err != nil {
+		return fmt.Errorf("failed to read file for type detection: %w", err)
 	}
-	defer gzReader.Close()
 
-	tarReader := tar.NewReader(gzReader)
+	// Reset file pointer for later reading
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek back to start of file: %w", err)
+	}
 
+	var tarReader *tar.Reader
+
+	// Check if it's a gzip file
+	if isGzipped(buf) {
+		gzReader, err := gzip.NewReader(file)
+		if err != nil {
+			return fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer gzReader.Close()
+		tarReader = tar.NewReader(gzReader)
+	} else if isXZ(buf) {
+		// Check if it's an xz file
+		xzReader, err := xz.NewReader(file)
+		if err != nil {
+			return fmt.Errorf("failed to create xz reader: %w", err)
+		}
+		tarReader = tar.NewReader(xzReader)
+	} else {
+		return fmt.Errorf("unsupported tarball format")
+	}
+
+	// Extract files from tarball
 	for {
 		header, err := tarReader.Next()
 		if err == io.EOF {
@@ -147,6 +173,16 @@ func extractTarball(tarballPath, destDir string) error {
 	}
 
 	return nil
+}
+
+// isGzipped checks if the file is a gzip compressed file
+func isGzipped(buf []byte) bool {
+	return len(buf) > 1 && buf[0] == 0x1f && buf[1] == 0x8b
+}
+
+// isXZ checks if the file is an xz compressed file
+func isXZ(buf []byte) bool {
+	return len(buf) > 3 && buf[0] == 0xFD && buf[1] == 0x37 && buf[2] == 0x7A && buf[3] == 0x58
 }
 
 func (f *FSManager) CleanUp() error {

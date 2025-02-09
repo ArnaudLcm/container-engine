@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/arnaudlcm/container-engine/common/log"
 	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/google/uuid"
 )
@@ -72,10 +71,6 @@ func (g *EngineDaemon) CreateContainer(ctx context.Context, req *pb.CreateContai
 	container.Status = pb.ContainerStatus_CONTAINER_HANGING
 
 	g.containers[uuid] = container
-
-	if err := process.Start(); err != nil {
-		log.Error("%w", err)
-		return &pb.CreateContainerResponse{Success: true}, err
-	}
+	go process.Start()
 	return &pb.CreateContainerResponse{Success: true}, nil
 }

@@ -37,7 +37,7 @@ func SetupGrpcClient() (context.Context, error) {
 
 	client := pb.NewContainerDaemonServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
 
 	grpcClient := &gRPCClient{
 		Client: client,
