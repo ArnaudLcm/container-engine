@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -21,7 +20,7 @@ type Container struct {
 	Status  pb.ContainerStatus
 	Process Process
 	Manager CGroupManager
-	Logger  *logger.Logger
+	Logger  logger.Logger
 }
 
 func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.GetContainersRequest) (*pb.GetContainersResponse, error) {
@@ -36,6 +35,29 @@ func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.GetContainersR
 	}
 
 	return &pb.GetContainersResponse{Containers: containers}, nil
+}
+
+func (d *EngineDaemon) GetContainerLogs(ctx context.Context, req *pb.GetContainerLogsRequest) (*pb.GetContainerLogsResponse, error) {
+
+	u, err := uuid.Parse(req.ContainerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID: %v", err)
+	}
+
+	if c, ok := d.containers[u]; !ok {
+		return nil, fmt.Errorf("container doesn't exist")
+	} else {
+
+		lastLogs, err := c.Logger.GetLastLogs(10)
+		if err != nil {
+			return nil, err
+		}
+
+		return &pb.GetContainerLogsResponse{
+			Log: lastLogs,
+		}, nil
+	}
+
 }
 
 func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb.ContainerDaemonService_CreateContainerServer) error {
@@ -144,12 +166,10 @@ func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb
 		}
 	}
 
-	container.Logger = &logger
+	container.Logger = logger
 
 	process := Process{
 		Args:              req.Config.Cmd,
-		Stdin:             os.Stdin,
-		Stdout:            os.Stdout,
 		CommunicationPipe: nil,
 		UID:               0,
 		GID:               0,
@@ -161,26 +181,17 @@ func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb
 	container.Status = pb.ContainerStatus_CONTAINER_HANGING
 	g.containers[uuid] = container
 
-	if err := process.Init(); err != nil {
+	if err := process.Init(&logger); err != nil {
 		return err
 	}
-
-	// Init the logger
-	stdoutPipe, _ := process.cmd.StdoutPipe()
-	stderrPipe, _ := process.cmd.StderrPipe()
-
-	stdoutScanner := bufio.NewScanner(stdoutPipe)
-	stderrScanner := bufio.NewScanner(stderrPipe)
-
-	go logger.ProcessOutput(stdoutScanner, "stdout")
-	go logger.ProcessOutput(stderrScanner, "stderr")
-
-	//@TODO: Find a better way to manage pipes
 
 	// Start the init process in the container and add it to the cgroup
 	if err := process.cmd.Start(); err != nil {
 		return err
 	}
+
+	go logger.ProcessOutput(process.StdoutScanner, "stdout")
+	go logger.ProcessOutput(process.StderrScanner, "stderr")
 
 	if err := stream.Send(&pb.CreateContainerResponse{
 		Success: true,

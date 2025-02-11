@@ -3,9 +3,9 @@ package client
 import (
 	"log"
 
+	"github.com/arnaudlcm/container-engine/internal/client/containers"
 	"github.com/arnaudlcm/container-engine/internal/client/create"
 	"github.com/arnaudlcm/container-engine/internal/client/image"
-	"github.com/arnaudlcm/container-engine/internal/client/list"
 	"github.com/arnaudlcm/container-engine/internal/client/rpc"
 	"github.com/spf13/cobra"
 )
@@ -32,8 +32,7 @@ func init() {
 	} else {
 
 		rootCmd.SetContext(ctx)
-
-		rootCmd.AddCommand(list.GetCommand())
+		rootCmd.AddCommand(containers.GetCommand())
 		rootCmd.AddCommand(create.GetCommand())
 		rootCmd.AddCommand(image.GetCommand())
 	}

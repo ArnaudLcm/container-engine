@@ -1,22 +1,23 @@
 package core
 
 import (
+	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
 
+	"github.com/arnaudlcm/container-engine/internal/core/logger"
 	"github.com/moby/sys/reexec"
 )
 
 type Process struct {
 	Args              []string
 	UID, GID          int
-	Stdin             io.Reader
-	Stdout            io.Writer
+	StdoutScanner     *bufio.Scanner
+	StderrScanner     *bufio.Scanner
 	CommunicationPipe *os.File // Used for communication between the container daemon and the process
 	rootPath          string
 	workingDirectory  string
@@ -110,7 +111,7 @@ func runSubCommand() error {
 	return nil
 }
 
-func (p *Process) Init() error {
+func (p *Process) Init(logger *logger.Logger) error {
 	cmd := reexec.Command("pivot_root")
 	cmd.Env = append(os.Environ(),
 		"NEW_ROOT="+p.rootPath,
@@ -118,9 +119,19 @@ func (p *Process) Init() error {
 		"EXEC_CMD="+p.Args[0],
 		"EXEC_ARGS="+strings.Join(p.Args[1:], " "),
 	)
-	cmd.Stdin = p.Stdin
-	cmd.Stdout = p.Stdout
-	cmd.Stderr = p.Stdout
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	p.StdoutScanner = bufio.NewScanner(stdoutPipe)
+	p.StderrScanner = bufio.NewScanner(stderrPipe)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWNS | syscall.CLONE_NEWUTS |
 			syscall.CLONE_NEWIPC | syscall.CLONE_NEWPID |

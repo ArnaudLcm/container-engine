@@ -10,4 +10,5 @@ type Logger interface {
 	GetStdErr() *os.File
 	ProcessOutput(scanner *bufio.Scanner, stream string)
 	WriteLog(message string, stream string) error
+	GetLastLogs(n int) ([]string, error)
 }

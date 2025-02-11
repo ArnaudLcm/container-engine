@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ContainerDaemonService_GetContainers_FullMethodName   = "/daemon.ContainerDaemonService/GetContainers"
-	ContainerDaemonService_CreateContainer_FullMethodName = "/daemon.ContainerDaemonService/CreateContainer"
+	ContainerDaemonService_GetContainers_FullMethodName    = "/daemon.ContainerDaemonService/GetContainers"
+	ContainerDaemonService_GetContainerLogs_FullMethodName = "/daemon.ContainerDaemonService/GetContainerLogs"
+	ContainerDaemonService_CreateContainer_FullMethodName  = "/daemon.ContainerDaemonService/CreateContainer"
 )
 
 // ContainerDaemonServiceClient is the client API for ContainerDaemonService service.
@@ -28,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContainerDaemonServiceClient interface {
 	GetContainers(ctx context.Context, in *GetContainersRequest, opts ...grpc.CallOption) (*GetContainersResponse, error)
+	GetContainerLogs(ctx context.Context, in *GetContainerLogsRequest, opts ...grpc.CallOption) (*GetContainerLogsResponse, error)
 	CreateContainer(ctx context.Context, in *CreateContainerRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[CreateContainerResponse], error)
 }
 
@@ -43,6 +45,16 @@ func (c *containerDaemonServiceClient) GetContainers(ctx context.Context, in *Ge
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetContainersResponse)
 	err := c.cc.Invoke(ctx, ContainerDaemonService_GetContainers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *containerDaemonServiceClient) GetContainerLogs(ctx context.Context, in *GetContainerLogsRequest, opts ...grpc.CallOption) (*GetContainerLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetContainerLogsResponse)
+	err := c.cc.Invoke(ctx, ContainerDaemonService_GetContainerLogs_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,6 +85,7 @@ type ContainerDaemonService_CreateContainerClient = grpc.ServerStreamingClient[C
 // for forward compatibility.
 type ContainerDaemonServiceServer interface {
 	GetContainers(context.Context, *GetContainersRequest) (*GetContainersResponse, error)
+	GetContainerLogs(context.Context, *GetContainerLogsRequest) (*GetContainerLogsResponse, error)
 	CreateContainer(*CreateContainerRequest, grpc.ServerStreamingServer[CreateContainerResponse]) error
 	mustEmbedUnimplementedContainerDaemonServiceServer()
 }
@@ -86,6 +99,9 @@ type UnimplementedContainerDaemonServiceServer struct{}
 
 func (UnimplementedContainerDaemonServiceServer) GetContainers(context.Context, *GetContainersRequest) (*GetContainersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContainers not implemented")
+}
+func (UnimplementedContainerDaemonServiceServer) GetContainerLogs(context.Context, *GetContainerLogsRequest) (*GetContainerLogsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContainerLogs not implemented")
 }
 func (UnimplementedContainerDaemonServiceServer) CreateContainer(*CreateContainerRequest, grpc.ServerStreamingServer[CreateContainerResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method CreateContainer not implemented")
@@ -130,6 +146,24 @@ func _ContainerDaemonService_GetContainers_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContainerDaemonService_GetContainerLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContainerLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContainerDaemonServiceServer).GetContainerLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContainerDaemonService_GetContainerLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContainerDaemonServiceServer).GetContainerLogs(ctx, req.(*GetContainerLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ContainerDaemonService_CreateContainer_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(CreateContainerRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -151,6 +185,10 @@ var ContainerDaemonService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContainers",
 			Handler:    _ContainerDaemonService_GetContainers_Handler,
+		},
+		{
+			MethodName: "GetContainerLogs",
+			Handler:    _ContainerDaemonService_GetContainerLogs_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -6,11 +6,15 @@ option go_package = "service/proto";
 
 service ContainerDaemonService {
   rpc GetContainers (GetContainersRequest) returns (GetContainersResponse);
+  rpc GetContainerLogs (GetContainerLogsRequest) returns (GetContainerLogsResponse);
   rpc CreateContainer (CreateContainerRequest) returns (stream CreateContainerResponse);
 }
 
 message GetContainersRequest {}
 
+message GetContainerLogsRequest {
+  string containerID = 1;
+}
 
 message ContainerConfig {
   string layer = 1;
@@ -43,4 +47,9 @@ message ContainerInfos {
 
 message GetContainersResponse {
   repeated ContainerInfos containers = 1;
+}
+
+
+message GetContainerLogsResponse {
+  repeated string log = 1;
 }
