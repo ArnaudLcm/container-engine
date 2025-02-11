@@ -17,12 +17,13 @@ import (
 	"syscall"
 
 	"github.com/arnaudlcm/container-engine/common/log"
+	"github.com/arnaudlcm/container-engine/internal/core/utils"
 	"github.com/arnaudlcm/container-engine/internal/parser"
 	"github.com/ulikunitz/xz"
 )
 
-const LIB_FS_MERGED_DIR = LIB_FOLDER_PATH + "/containers"
-const LIB_FS_LAYERS_DIR = LIB_FOLDER_PATH + "/layers"
+const LIB_FS_MERGED_DIR = utils.LIB_FOLDER_PATH + "/containers"
+const LIB_FS_LAYERS_DIR = utils.LIB_FOLDER_PATH + "/layers"
 
 type FSManager struct {
 	layers map[string]string
@@ -41,8 +42,8 @@ func NewFSManager() *FSManager {
 // The purpose of this function is to setup the overlay FS dirs
 func (f *FSManager) SetupFSDirs() {
 	lowerDir := LIB_FS_LAYERS_DIR
-	upperDir := path.Join(LIB_FOLDER_PATH, "volumes")
-	workDir := path.Join(LIB_FOLDER_PATH, "work")
+	upperDir := path.Join(utils.LIB_FOLDER_PATH, "volumes")
+	workDir := path.Join(utils.LIB_FOLDER_PATH, "work")
 	mergedDir := LIB_FS_MERGED_DIR
 	os.MkdirAll(lowerDir, 0755)
 	os.MkdirAll(upperDir, 0755)

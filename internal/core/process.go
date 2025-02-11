@@ -20,6 +20,7 @@ type Process struct {
 	CommunicationPipe *os.File // Used for communication between the container daemon and the process
 	rootPath          string
 	workingDirectory  string
+	cmd               *exec.Cmd
 }
 
 func init() {
@@ -109,7 +110,7 @@ func runSubCommand() error {
 	return nil
 }
 
-func (p *Process) Start() error {
+func (p *Process) Init() error {
 	cmd := reexec.Command("pivot_root")
 	cmd.Env = append(os.Environ(),
 		"NEW_ROOT="+p.rootPath,
@@ -140,8 +141,7 @@ func (p *Process) Start() error {
 		},
 	}
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error starting reexec pivot_root: %w", err)
-	}
+	p.cmd = cmd
+
 	return nil
 }

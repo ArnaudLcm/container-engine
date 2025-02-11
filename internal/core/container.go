@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/arnaudlcm/container-engine/internal/core/logger"
 	"github.com/arnaudlcm/container-engine/internal/parser"
 	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/google/uuid"
@@ -19,6 +21,7 @@ type Container struct {
 	Status  pb.ContainerStatus
 	Process Process
 	Manager CGroupManager
+	Logger  *logger.Logger
 }
 
 func (d *EngineDaemon) GetContainers(ctx context.Context, req *pb.GetContainersRequest) (*pb.GetContainersResponse, error) {
@@ -130,6 +133,19 @@ func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb
 		return err
 	}
 
+	// Setup the logger
+	logger, err := logger.NewLogger(container.ID.String())
+	if err != nil {
+		if err := stream.Send(&pb.CreateContainerResponse{
+			Success: false,
+			Message: "Error during logger setup",
+		}); err != nil {
+			return fmt.Errorf("error sending progress: %w", err)
+		}
+	}
+
+	container.Logger = &logger
+
 	process := Process{
 		Args:              req.Config.Cmd,
 		Stdin:             os.Stdin,
@@ -145,6 +161,27 @@ func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb
 	container.Status = pb.ContainerStatus_CONTAINER_HANGING
 	g.containers[uuid] = container
 
+	if err := process.Init(); err != nil {
+		return err
+	}
+
+	// Init the logger
+	stdoutPipe, _ := process.cmd.StdoutPipe()
+	stderrPipe, _ := process.cmd.StderrPipe()
+
+	stdoutScanner := bufio.NewScanner(stdoutPipe)
+	stderrScanner := bufio.NewScanner(stderrPipe)
+
+	go logger.ProcessOutput(stdoutScanner, "stdout")
+	go logger.ProcessOutput(stderrScanner, "stderr")
+
+	//@TODO: Find a better way to manage pipes
+
+	// Start the init process in the container and add it to the cgroup
+	if err := process.cmd.Start(); err != nil {
+		return err
+	}
+
 	if err := stream.Send(&pb.CreateContainerResponse{
 		Success: true,
 		Message: "Container process started",
@@ -152,9 +189,9 @@ func (g *EngineDaemon) CreateContainer(req *pb.CreateContainerRequest, stream pb
 		return fmt.Errorf("error sending progress: %w", err)
 	}
 
-	go process.Start()
+	container.Manager.Add(process.cmd.Process.Pid)
 
-	// Send final success message
+	// Send final success messages
 	if err := stream.Send(&pb.CreateContainerResponse{
 		Success: true,
 		Message: "Container created successfully",

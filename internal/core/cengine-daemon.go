@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/arnaudlcm/container-engine/common/log"
+	"github.com/arnaudlcm/container-engine/internal/core/utils"
 	pb "github.com/arnaudlcm/container-engine/service/proto"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -22,7 +23,6 @@ type EngineDaemon struct {
 }
 
 const maxAttemptUUID int = 50
-const LIB_FOLDER_PATH = "/var/lib/cengine"
 
 func NewEngineDaemon(key *ecdsa.PublicKey) *EngineDaemon {
 
@@ -32,8 +32,9 @@ func NewEngineDaemon(key *ecdsa.PublicKey) *EngineDaemon {
 		manifestKey: key,
 	}
 
-	// Setup working directory
-	os.MkdirAll(LIB_FOLDER_PATH, 0755)
+	// Setup working directories
+	os.MkdirAll(utils.LIB_FOLDER_PATH, 0755)
+	os.MkdirAll(utils.LIB_FOLDER_LOGS_PATH, 0755)
 	go runRPCServer(&engineDaemon)
 
 	return &engineDaemon
